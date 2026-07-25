@@ -7,7 +7,7 @@
 
 
 <div align="center">
-    <small><code>curl -fsSL https://raw.githubusercontent.com/DuckKota/my-opencode-setup/refs/heads/main/bin/setup | bash</code></small>
+    curl -fsSL https://raw.githubusercontent.com/DuckKota/my-opencode-setup/refs/heads/main/bin/setup | bash
 </div>
 
 
