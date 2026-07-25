@@ -120,6 +120,55 @@ function _init_openspec
     log::newline
 }
 
+function _init_agents_md
+{
+    local mode="$1"
+    local src="$2"
+    local dst="$3"
+
+    if [[ "$mode" != "prepend" && "$mode" != "append" ]]
+    then
+        log::error "Usage: _init_agents_md <prepend|append> <source_file> <target_file>"
+        return 1
+    fi
+
+    if [[ ! -f "$src" ]]
+    then
+        log::error "Source file not found: $src"
+        return 1
+    fi
+
+    local content
+    content=$(cat "$src")
+    local marker
+    marker=$(echo "$content" | head -n1)
+
+    mkdir -p "$(dirname "$dst")"
+    touch "$dst"
+
+    if grep -qF "$marker" "$dst"
+    then
+        log::success "Content already exists in $dst, skipping"
+        log::newline
+    else
+        local tmp_file
+        tmp_file=$(mktemp)
+        if [[ "$mode" == "append" ]]
+        then
+            cat "$dst" > "$tmp_file"
+            echo "" >> "$tmp_file"
+            echo "$content" >> "$tmp_file"
+        else
+            echo "$content" > "$tmp_file"
+            echo "" >> "$tmp_file"
+            cat "$dst" >> "$tmp_file"
+        fi
+        mv "$tmp_file" "$dst"
+        log::success "Content written to $dst ($mode)"
+        log::newline
+    fi
+}
+
 function _init_codebase_memory_mcp
 {
     log::info "Initializing codebase-memory-mcp..."
@@ -132,27 +181,8 @@ function _init_codebase_memory_mcp
         return 1
     fi
 
-    # Update the projects AGENTS.md file
-    if [[ -f "$GIT_DIR/AGENTS.md" ]]
-    then
-        local codebase_mcp_agents_content
-        codebase_mcp_agents_content=$(cat "$ROOT_DIR/src/instructions/codebase-memory-mcp-agents.md")
-
-        local agents_file="$GIT_DIR/AGENTS.md"
-        touch "$agents_file"
-
-        if ! grep -qF "$(echo "$codebase_mcp_agents_content" | head -n1)" "$agents_file"
-        then
-            local tmp_file
-            tmp_file=$(mktemp)
-            echo "$codebase_mcp_agents_content" > "$tmp_file"
-            echo "" >> "$tmp_file"
-            cat "$agents_file" >> "$tmp_file"
-            mv "$tmp_file" "$agents_file"
-        fi
-    else
-        cp "$ROOT_DIR/src/instructions/codebase-memory-mcp-agents.md" "$GIT_DIR/AGENTS.md"
-    fi
+    # Initialize AGENTS.md with codebase-memory-mcp instructions
+    _init_agents_md "prepend" "$ROOT_DIR/src/instructions/codebase-memory-mcp-agents.md" "$GIT_DIR/AGENTS.md"
 
     # This is custom command that I wrote, so I don't care to check that it already exists.
     mkdir -p "$GIT_DIR/.opencode/plugins"
@@ -408,6 +438,9 @@ _write_skill "grilling"
 
 log::box "Installing Miscellaneous"
 _init_caveman_speak
+
+log::info "Writing file edit size limits..."
+_init_agents_md "prepend" "$ROOT_DIR/src/instructions/file-edit-limits.md" "$GIT_DIR/AGENTS.md"
 
 echo
 log::box "  •  OpenCode Setup Complete  •  "
