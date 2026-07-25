@@ -1,0 +1,41 @@
+{
+  "$schema": "https://opencode.ai/theme.json",
+  "defs": {
+    "bg_default": "#0d1117",
+    "bg_overlay": "#161b22",
+    "bg_element": "#21262d",
+    "fg_default": "#c9d1d9",
+    "fg_muted": "#8b949e",
+    "fg_subtle": "#484f58",
+    "border_default": "#30363d",
+    "border_active": "#58a6ff",
+    "accent_blue": "#58a6ff",
+    "status_green": "#3fb950",
+    "status_red": "#f85149",
+    "status_orange": "#d29922",
+    "status_purple": "#bc8cff"
+  },
+  "theme": {
+    "primary": { "dark": "accent_blue", "light": "accent_blue" },
+    "secondary": { "dark": "status_purple", "light": "status_purple" },
+    "accent": { "dark": "accent_blue", "light": "accent_blue" },
+    "error": { "dark": "status_red", "light": "status_red" },
+    "warning": { "dark": "status_orange", "light": "status_orange" },
+    "success": { "dark": "status_green", "light": "status_green" },
+    "info": { "dark": "accent_blue", "light": "accent_blue" },
+    "text": { "dark": "fg_default", "light": "fg_default" },
+    "textMuted": { "dark": "fg_muted", "light": "fg_muted" },
+    "background": { "dark": "bg_default", "light": "bg_default" },
+    "backgroundPanel": { "dark": "bg_overlay", "light": "bg_overlay" },
+    "backgroundElement": { "dark": "bg_element", "light": "bg_element" },
+    "border": { "dark": "border_default", "light": "border_default" },
+    "borderActive": { "dark": "border_active", "light": "border_active" },
+    "borderSubtle": { "dark": "fg_subtle", "light": "fg_subtle" },
+    "diffAdded": { "dark": "status_green", "light": "status_green" },
+    "diffRemoved": { "dark": "status_red", "light": "status_red" },
+    "diffContext": { "dark": "fg_muted", "light": "fg_muted" },
+    "diffHunkHeader": { "dark": "status_purple", "light": "status_purple" },
+    "diffHighlightAdded": { "dark": "status_green", "light": "status_green" },
+    "diffHighlightRemoved": { "dark": "status_red", "light": "status_red" }
+  }
+}

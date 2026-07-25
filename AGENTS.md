@@ -1,9 +1,25 @@
-## Critical Rule: Chunked Assembly for Large File Operations
+<!-- codebase-memory-mcp:start -->
+# Codebase Knowledge Graph (codebase-memory-mcp)
 
-To prevent output token truncation, broken JSON payloads, and tool failure:
+This project uses codebase-memory-mcp to maintain a knowledge graph of the codebase.
 
-- **Strict Payload Ceiling:** NEVER generate or replace more than **300 lines of content** in a single `write` or `edit` tool call.
-- **Mandatory Chunked Assembly:** Whenever creating or significantly expanding a file expected to exceed 300 lines, you MUST construct it in steps:
-  1. **Initialize:** Use `write` to establish the basic file outline, high-level structure, exports, or boilerplate.
-  2. **Populate:** Use sequential, smaller `edit` calls to populate distinct sections, blocks, or content groups step-by-step.
-- Do not attempt to write massive monolithic files in a single turn. 
+ALWAYS prefer MCP graph tools over grep/glob/file-search for code discovery.
+
+## Priority Order
+1. `search_graph` — find functions, classes, routes, variables by pattern
+2. `trace_path` — trace who calls a function or what it calls
+3. `get_code_snippet` — read specific function/class source code
+4. `query_graph` — run Cypher queries for complex patterns
+5. `get_architecture` — high-level project summary
+
+## When to fall back to grep/glob
+- Searching for string literals, error messages, config values
+- Searching non-code files (Dockerfiles, shell scripts, configs)
+- When MCP tools return insufficient results
+
+## Examples
+- Find a handler: `search_graph(name_pattern=".*OrderHandler.*")`
+- Who calls it: `trace_path(function_name="OrderHandler", direction="inbound")`
+- Read source: `get_code_snippet(qualified_name="pkg/orders.OrderHandler")`
+<!-- codebase-memory-mcp:end -->
+

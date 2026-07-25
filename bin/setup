@@ -63,18 +63,18 @@ function _ensure_git_project
     log::newline
 }
 
-function _ensure_openspec_installed
-{
-    log::info "Ensuring OpenSpec is installed..."
-    if ! util::command_exists "openspec"
-    then
-        log::error "OpenSpec is not installed. Please install OpenSpec and try again."
-        log::error "Install: npm install -g @fission-ai/openspec@latest"
-        exit 1
-    fi
-    log::success "OpenSpec verified!"
-    log::newline
-}
+# function _ensure_openspec_installed
+# {
+#     log::info "Ensuring OpenSpec is installed..."
+#     if ! util::command_exists "openspec"
+#     then
+#         log::error "OpenSpec is not installed. Please install OpenSpec and try again."
+#         log::error "Install: npm install -g @fission-ai/openspec@latest"
+#         exit 1
+#     fi
+#     log::success "OpenSpec verified!"
+#     log::newline
+# }
 
 function _ensure_codebase_memory_mcp_installed
 {
@@ -112,13 +112,13 @@ function _update_gitignore
     fi
 }
 
-function _init_openspec
-{
-    log::info "Initializing OpenSpec..."
-    openspec init --tools opencode
-    log::success "OpenSpec initialized!"
-    log::newline
-}
+# function _init_openspec
+# {
+#     log::info "Initializing OpenSpec..."
+#     openspec init --tools opencode
+#     log::success "OpenSpec initialized!"
+#     log::newline
+# }
 
 function _init_agents_md
 {
@@ -184,7 +184,7 @@ function _init_codebase_memory_mcp
     # Initialize AGENTS.md with codebase-memory-mcp instructions
     _init_agents_md "prepend" "$ROOT_DIR/src/instructions/codebase-memory-mcp-agents.md" "$GIT_DIR/AGENTS.md"
 
-    # This is custom command that I wrote, so I don't care to check that it already exists.
+    # This is custom plugin that I wrote, so I don't care to check that it already exists.
     mkdir -p "$GIT_DIR/.opencode/plugins"
     cp "$ROOT_DIR/src/plugins/CodebaseMemoryReminder.ts" "$GIT_DIR/.opencode/plugins"
 
@@ -260,24 +260,28 @@ function _write_command
 
     local command_name="$1"
     log::info "Writing $command_name command..."
-    if [[ -f "$GIT_DIR/.opencode/commands/$command_name.md" ]]
+
+    local src_command="$ROOT_DIR/src/commands/$command_name.md"
+    local dst_command="$HOME/.config/opencode/commands/$command_name.md"
+
+    if [[ -f "$dst_command" ]]
     then
         local command_current
-        command_current=$(cat "$GIT_DIR/.opencode/commands/$command_name.md")
+        command_current=$(cat "$dst_command")
         local command_new
-        command_new=$(cat "$ROOT_DIR/src/commands/$command_name.md")
+        command_new=$(cat "$src_command")
         if [[ "$command_current" == "$command_new" ]]
         then
-            log::success "/$command_name command already set up in $GIT_DIR/.opencode/commands/$command_name.md"
+            log::success "/$command_name command already set up in $dst_command"
             log::newline
         else
-            log::warn "Skipping /$command_name command. Different skill by the same name already exists: $GIT_DIR/.opencode/commands/$command_name.md"
+            log::warn "Skipping /$command_name command. Different skill by the same name already exists: $dst_command"
             log::newline
         fi
     else
-        mkdir -p "$GIT_DIR/.opencode/commands"
-        cp "$ROOT_DIR/src/commands/$command_name.md" "$GIT_DIR/.opencode/commands/$command_name.md"
-        log::success "/$command_name command written to .opencode/commands/$command_name.md"
+        mkdir -p "$(dirname "$dst_command")"
+        cp "$src_command" "$dst_command"
+        log::success "/$command_name command written to $dst_command"
         log::newline
     fi
 }
@@ -294,7 +298,7 @@ function _write_skill
     log::info "Writing $skill_name skill..."
 
     local src_dir="$ROOT_DIR/src/skills/$skill_name"
-    local skill_dir="$GIT_DIR/.opencode/skills/$skill_name"
+    local dst_dir="$HOME/.config/opencode/skills/$skill_name"
 
     if [[ ! -d "$src_dir" ]]
     then
@@ -302,7 +306,7 @@ function _write_skill
         exit 1
     fi
 
-    if [[ -d "$skill_dir" ]]
+    if [[ -d "$dst_dir" ]]
     then
         local any_diff=0
         local file rel_path current existing
@@ -310,7 +314,7 @@ function _write_skill
         do
             rel_path="${file#$src_dir/}"
             current=$(cat "$ROOT_DIR/src/skills/$skill_name/$rel_path")
-            existing=$(cat "$skill_dir/$rel_path" 2>/dev/null)
+            existing=$(cat "$dst_dir/$rel_path" 2>/dev/null)
             if [[ "$current" != "$existing" ]]
             then
                 any_diff=1
@@ -320,10 +324,10 @@ function _write_skill
 
         if (( any_diff == 0 ))
         then
-            log::success "$skill_name skill already set up in $skill_dir"
+            log::success "$skill_name skill already set up in $dst_dir"
             log::newline
         else
-            log::warn "Skipping $skill_name skill. Different version already exists: $skill_dir"
+            log::warn "Skipping $skill_name skill. Different version already exists: $dst_dir"
             log::newline
         fi
         return 0
@@ -333,78 +337,52 @@ function _write_skill
     while IFS= read -r -d '' file
     do
         rel_path="${file#$src_dir/}"
-        target_file="$skill_dir/$rel_path"
+        target_file="$dst_dir/$rel_path"
         mkdir -p "$(dirname "$target_file")"
         cp "$ROOT_DIR/src/skills/$skill_name/$rel_path" "$target_file"
     done < <(find "$src_dir" -type f -print0)
 
-    log::success "$skill_name skill written to .opencode/skills/$skill_name"
+    log::success "$skill_name skill written to $dst_dir"
     log::newline
-}
-
-function _init_caveman_speak
-{
-    log::info "Initializing caveman speak..."
-    local caveman_content
-    caveman_content=$(cat "$ROOT_DIR/src/instructions/caveman.md")
-
-    local agents_file
-    agents_file="$HOME/.config/opencode/AGENTS.md"
-    mkdir -p "$(dirname "$agents_file")"
-    touch "$agents_file"
-    if grep -qF "$caveman_content" "$agents_file"
-    then
-        log::success "Caveman direction already exists in $agents_file"
-        log::newline
-    else
-        local tmp_file
-        tmp_file=$(mktemp)
-        echo "$caveman_content" > "$tmp_file"
-        echo "" >> "$tmp_file"
-        cat "$agents_file" >> "$tmp_file"
-        mv "$tmp_file" "$agents_file"
-        log::success "Caveman speak initialized!"
-        log::newline
-    fi
 }
 
 function _write_commit_message_command
 {
     log::info "Writing commit-message command..."
-    local repo_command="$GIT_DIR/.opencode/commands/commit-message.md"
-    local repo_script="$GIT_DIR/.opencode/scripts/verify-commit"
-    local src_command="$ROOT_DIR/src/commands/commit-message.md"
-    local src_script="$ROOT_DIR/src/commands/verify-commit"
+    local src_command_path="$ROOT_DIR/src/commands/commit-message.md"
+    local dst_command_path="$HOME/.config/opencode/commands/commit-message.md"
+    local src_script_path="$ROOT_DIR/src/commands/verify-commit"
+    local dst_script_path="$HOME/.config/opencode/scripts/verify-commit"
 
-    if [[ -f "$repo_command" ]] || [[ -f "$repo_script" ]]
+    if [[ -f "$dst_command_path" ]] || [[ -f "$dst_script_path" ]]
     then
-        if [[ -f "$repo_command" ]] && [[ -f "$repo_script" ]]
+        if [[ -f "$dst_command_path" ]] && [[ -f "$dst_script_path" ]]
         then
             local current_script new_script
-            current_script=$(cat "$repo_script")
-            new_script=$(cat "$src_script")
+            current_script=$(cat "$dst_script_path")
+            new_script=$(cat "$src_script_path")
 
             local current_command new_command
-            current_command=$(cat "$repo_command")
-            new_command=$(cat "$src_command" | sed "s|<VALIDATE_COMMIT_SCRIPT>|$repo_script|g")
+            current_command=$(cat "$dst_command_path")
+            new_command=$(cat "$src_command_path" | sed "s|<VALIDATE_COMMIT_SCRIPT>|$dst_script_path|g")
 
             if [[ "$current_command" == "$new_command" ]] && [[ "$current_script" == "$new_script" ]]
             then
-                log::success "/commit-message command already set up in $repo_command"
+                log::success "/commit-message command already set up in $dst_command_path"
                 log::newline
                 return 0
             fi
         fi
 
-        log::warn "Skipping /commit-message command. Different version already exists in $repo_command"
+        log::warn "Skipping /commit-message command. Different version already exists in $dst_command_path"
         log::newline
     else
-        mkdir -p "$(dirname "$repo_command")" "$(dirname "$repo_script")"
-        cp "$src_command" "$repo_command"
-        cp "$src_script" "$repo_script"
-        chmod 755 "$repo_script"
-        sed "s|<VALIDATE_COMMIT_SCRIPT>|$repo_script|g" "$repo_command" > "$repo_command.tmp" && mv "$repo_command.tmp" "$repo_command"
-        log::success "/commit-message command written to $GIT_DIR/.opencode/commands/commit-message.md"
+        mkdir -p "$(dirname "$dst_command_path")" "$(dirname "$dst_script_path")"
+        cp "$src_command_path" "$dst_command_path"
+        cp "$src_script_path" "$dst_script_path"
+        chmod 755 "$dst_script_path"
+        sed "s|<VALIDATE_COMMIT_SCRIPT>|$dst_script_path|g" "$dst_command_path" > "$dst_command_path.tmp" && mv "$dst_command_path.tmp" "$dst_command_path"
+        log::success "/commit-message command written to $dst_command_path"
         log::newline
     fi
 }
@@ -414,13 +392,13 @@ function _write_commit_message_command
 
 log::box "System Pre-checks"
 _ensure_git_project
-_ensure_openspec_installed
+# _ensure_openspec_installed
 _ensure_codebase_memory_mcp_installed
 _ensure_rtk_installed
 
 log::box "Initializing Tools"
 _update_gitignore
-_init_openspec
+# _init_openspec
 _init_codebase_memory_mcp
 _init_rtk
 
@@ -437,10 +415,9 @@ _write_skill "improve-codebase-architecture"
 _write_skill "grilling"
 
 log::box "Installing Miscellaneous"
-_init_caveman_speak
+_init_agents_md "prepend" "$ROOT_DIR/src/instructions/caveman.md" "$HOME/.config/opencode/AGENTS.md"
+_init_agents_md "append" "$ROOT_DIR/src/instructions/file-edit-limits.md" "$HOME/.config/opencode/AGENTS.md"
 
-log::info "Writing file edit size limits..."
-_init_agents_md "prepend" "$ROOT_DIR/src/instructions/file-edit-limits.md" "$GIT_DIR/AGENTS.md"
-
-echo
+"$ROOT_DIR/src/utils/_print_duck.sh"
+echo ""
 log::box "  •  OpenCode Setup Complete  •  "
