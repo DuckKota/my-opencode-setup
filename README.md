@@ -5,12 +5,7 @@
 * **Tools:** [rtk](https://www.rtk-ai.app/) • [codebase-memory-mcp](https://deusdata.github.io/codebase-memory-mcp/)
 * **Other:** [caveman](./src/instructions/caveman.md) • [batch-file-writes](./src/instructions/file-edit-limits.md) • [github-dark-default](./src/themes/github-dark-default.json) theme
 
-
-<div align="center">
-    curl -fsSL https://raw.githubusercontent.com/DuckKota/my-opencode-setup/refs/heads/main/bin/setup | bash
-</div>
-
-
+`curl -fsSL https://raw.githubusercontent.com/DuckKota/my-opencode-setup/refs/heads/main/bin/setup | bash`
 
 ![opencode](.img/oc.png)
 
