@@ -49,7 +49,7 @@ source "$ROOT_DIR/src/utils/_utils.sh"
 
 function _ensure_git_project
 {
-    log::info "Ensuring directory is a Git repository..."
+    log::info "Ensuring Git repository..."
     CWD=$(pwd -P)
     if ! util::is_git_project "$CWD"
     then
@@ -63,18 +63,18 @@ function _ensure_git_project
     log::newline
 }
 
-# function _ensure_openspec_installed
-# {
-#     log::info "Ensuring OpenSpec is installed..."
-#     if ! util::command_exists "openspec"
-#     then
-#         log::error "OpenSpec is not installed. Please install OpenSpec and try again."
-#         log::error "Install: npm install -g @fission-ai/openspec@latest"
-#         exit 1
-#     fi
-#     log::success "OpenSpec verified!"
-#     log::newline
-# }
+function _ensure_openspec_installed
+{
+    log::info "Ensuring OpenSpec is installed..."
+    if ! util::command_exists "openspec"
+    then
+        log::error "OpenSpec is not installed. Please install OpenSpec and try again."
+        log::error "Install: npm install -g @fission-ai/openspec@latest"
+        exit 1
+    fi
+    log::success "OpenSpec verified!"
+    log::newline
+}
 
 function _ensure_codebase_memory_mcp_installed
 {
@@ -112,13 +112,13 @@ function _update_gitignore
     fi
 }
 
-# function _init_openspec
-# {
-#     log::info "Initializing OpenSpec..."
-#     openspec init --tools opencode
-#     log::success "OpenSpec initialized!"
-#     log::newline
-# }
+function _init_openspec
+{
+    log::info "Initializing OpenSpec..."
+    openspec init --tools opencode
+    log::success "OpenSpec initialized!"
+    log::newline
+}
 
 function _init_agents_md
 {
@@ -173,6 +173,18 @@ function _init_codebase_memory_mcp
 {
     log::info "Initializing codebase-memory-mcp..."
 
+    local working_dir
+    working_dir=$(pwd -P)
+    if ! util::is_git_project "$working_dir"
+    then
+        log::warn "Not a Git repository: $working_dir"
+        log::warn "Skipping codebase-memory-mcp"
+        return 0
+    fi
+    local git_root
+    git_root=$(git -C "$working_dir" rev-parse --show-toplevel 2>/dev/null)
+    git_root=$(cd "$git_root" && pwd -P)
+
     # Ensure we found the codebase-memory-mcp executable
     local codebase_mcp_install_path="$(which codebase-memory-mcp)"
     if [[ -z "$codebase_mcp_install_path" ]]
@@ -182,14 +194,14 @@ function _init_codebase_memory_mcp
     fi
 
     # Initialize AGENTS.md with codebase-memory-mcp instructions
-    _init_agents_md "prepend" "$ROOT_DIR/src/instructions/codebase-memory-mcp-agents.md" "$GIT_DIR/AGENTS.md"
+    _init_agents_md "prepend" "$ROOT_DIR/src/instructions/codebase-memory-mcp-agents.md" "$git_root/AGENTS.md"
 
     # This is custom plugin that I wrote, so I don't care to check that it already exists.
-    mkdir -p "$GIT_DIR/.opencode/plugins"
-    cp "$ROOT_DIR/src/plugins/CodebaseMemoryReminder.ts" "$GIT_DIR/.opencode/plugins"
+    mkdir -p "$git_root/.opencode/plugins"
+    cp "$ROOT_DIR/src/plugins/CodebaseMemoryReminder.ts" "$git_root/.opencode/plugins"
 
     # Update the projects MCP server list
-    mkdir -p "$GIT_DIR/.opencode"
+    mkdir -p "$git_root/.opencode"
     local python_exe
     python_exe="$(util::get_python_exe)"
     if [[ -z "$python_exe" ]]
@@ -197,7 +209,7 @@ function _init_codebase_memory_mcp
         log::error "command not found: python3 / python"
         return 1
     fi
-    (cd "$GIT_DIR" && "$python_exe" -c "import json, os
+    (cd "$git_root" && "$python_exe" -c "import json, os
 
 file_path = '.opencode/opencode.json'
 
@@ -259,7 +271,7 @@ function _write_command
     fi
 
     local command_name="$1"
-    log::info "Writing $command_name command..."
+    log::info "Globally installing $command_name command..."
 
     local src_command="$ROOT_DIR/src/commands/$command_name.md"
     local dst_command="$HOME/.config/opencode/commands/$command_name.md"
@@ -275,7 +287,7 @@ function _write_command
             log::success "/$command_name command already set up in $dst_command"
             log::newline
         else
-            log::warn "Skipping /$command_name command. Different skill by the same name already exists: $dst_command"
+            log::warn "Skipping /$command_name command. Different command by the same name already exists: $dst_command"
             log::newline
         fi
     else
@@ -295,7 +307,7 @@ function _write_skill
     fi
 
     local skill_name="$1"
-    log::info "Writing $skill_name skill..."
+    log::info "Globally installing $skill_name skill..."
 
     local src_dir="$ROOT_DIR/src/skills/$skill_name"
     local dst_dir="$HOME/.config/opencode/skills/$skill_name"
@@ -348,7 +360,7 @@ function _write_skill
 
 function _write_commit_message_command
 {
-    log::info "Writing commit-message command..."
+    log::info "Globally installing commit-message command..."
     local src_command_path="$ROOT_DIR/src/commands/commit-message.md"
     local dst_command_path="$HOME/.config/opencode/commands/commit-message.md"
     local src_script_path="$ROOT_DIR/src/commands/verify-commit"
@@ -391,13 +403,13 @@ function _write_commit_message_command
 # ----------------------------------
 
 log::box "System Pre-checks"
-_ensure_git_project
+# _ensure_git_project
 # _ensure_openspec_installed
 _ensure_codebase_memory_mcp_installed
 _ensure_rtk_installed
 
 log::box "Initializing Tools"
-_update_gitignore
+# _update_gitignore
 # _init_openspec
 _init_codebase_memory_mcp
 _init_rtk
@@ -413,9 +425,13 @@ _write_skill "codebase-design"
 _write_skill "domain-modeling"
 _write_skill "improve-codebase-architecture"
 _write_skill "grilling"
+_write_skill "using-git-worktrees"
+_write_skill "verification-before-completion"
 
 log::box "Installing Miscellaneous"
+log::info "Globally installing Caveman speak..."
 _init_agents_md "prepend" "$ROOT_DIR/src/instructions/caveman.md" "$HOME/.config/opencode/AGENTS.md"
+log::info "Globally installing batch file write..."
 _init_agents_md "append" "$ROOT_DIR/src/instructions/file-edit-limits.md" "$HOME/.config/opencode/AGENTS.md"
 
 "$ROOT_DIR/src/utils/_print_duck.sh"
