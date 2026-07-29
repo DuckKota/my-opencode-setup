@@ -358,6 +358,33 @@ function _write_skill
     log::newline
 }
 
+function _write_theme
+{
+    if (( $# < 1 ))
+    then
+        echo "Error: Missing argument." >&2
+        exit 1
+    fi
+
+    local theme_name="$1"
+    log::info "Globally installing $theme_name theme..."
+
+    local src_file="$ROOT_DIR/src/themes/$theme_name.json"
+    local dst_file="$HOME/.config/opencode/themes/$theme_name.json"
+
+    if [[ ! -f "$src_file" ]]
+    then
+        log::error "Theme source not found: $src_file"
+        exit 1
+    fi
+
+    mkdir -p "$(dirname "$dst_file")"
+    cp "$src_file" "$dst_file"
+
+    log::success "$theme_name theme written to $dst_file"
+    log::newline
+}
+
 function _write_commit_message_command
 {
     log::info "Globally installing commit-message command..."
@@ -427,6 +454,9 @@ _write_skill "improve-codebase-architecture"
 _write_skill "grilling"
 _write_skill "using-git-worktrees"
 _write_skill "verification-before-completion"
+
+log::box "Installing Themes"
+_write_theme "github-dark-default"
 
 log::box "Installing Miscellaneous"
 log::info "Globally installing Caveman speak..."
