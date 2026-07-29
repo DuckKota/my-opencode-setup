@@ -212,9 +212,16 @@ Closes #789
 
 ## Step 4: Validate the commit message
 
-Run the repository's commit validation script located at
-<VALIDATE_COMMIT_SCRIPT> by passing the complete generated commit
-message to its standard input.
+Validate the generated commit message by executing the commit
+validation script located at:
+
+<VALIDATE_COMMIT_SCRIPT>
+
+Pass the complete generated commit message to the script via standard input.
+
+Expected invocation pattern:
+
+printf '%s\n' "<complete commit message>" | <VALIDATE_COMMIT_SCRIPT>
 
 Treat the validator as the source of truth.
 
