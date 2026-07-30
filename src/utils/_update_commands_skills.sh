@@ -131,6 +131,18 @@ function _update_verification_before_completion_skill
     log::newline
 }
 
+function _update_stop_slop_skill
+{
+    log::info "Updating stop-slop skill"
+    mkdir -p "$ROOT_DIR/src/skills/stop-slop/references"
+    curl -fsSL -# "https://raw.githubusercontent.com/hardikpandya/stop-slop/refs/heads/main/SKILL.md" > "$ROOT_DIR/src/skills/stop-slop/SKILL.md"
+    curl -fsSL -# "https://raw.githubusercontent.com/hardikpandya/stop-slop/refs/heads/main/references/examples.md" > "$ROOT_DIR/src/skills/stop-slop/references/examples.md"
+    curl -fsSL -# "https://raw.githubusercontent.com/hardikpandya/stop-slop/refs/heads/main/references/phrases.md" > "$ROOT_DIR/src/skills/stop-slop/references/phrases.md"
+    curl -fsSL -# "https://raw.githubusercontent.com/hardikpandya/stop-slop/refs/heads/main/references/structures.md" > "$ROOT_DIR/src/skills/stop-slop/references/structures.md"
+    log::success "stop-slop updated"
+    log::newline
+}
+
 
 
 # ----------------------------------
@@ -146,3 +158,4 @@ _update_improve_codebase_architecture_skill
 _update_grilling_skill
 _update_using_git_worktrees_skill
 _update_verification_before_completion_skill
+_update_stop_slop_skill

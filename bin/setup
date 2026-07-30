@@ -454,6 +454,7 @@ _write_skill "improve-codebase-architecture"
 _write_skill "grilling"
 _write_skill "using-git-worktrees"
 _write_skill "verification-before-completion"
+_write_skill "stop-slop"
 
 log::box "Installing Themes"
 _write_theme "github-dark-default"
