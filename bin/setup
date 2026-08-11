@@ -113,7 +113,7 @@ function _ensure_openspec_installed
     log::info "Ensuring OpenSpec is installed..."
     if ! util::command_exists "openspec"
     then
-        if ! _install_tool "OpenSpec" "npm install -g @fission-ai/openspec@latest" "openspec" \
+        if ! _install_tool "OpenSpec" "sudo npm install -g @fission-ai/openspec@latest" "openspec" \
             "$(npm prefix -g 2>/dev/null)/bin" "$HOME/.local/bin"
         then
             log::error "OpenSpec installation failed."
