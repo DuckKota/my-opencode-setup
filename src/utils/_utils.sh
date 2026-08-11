@@ -28,3 +28,42 @@ function util::get_python_exe
         echo "python"
     fi
 }
+
+function util::prompt_enter
+{
+    local prompt="${1:-Press Enter to continue...}"
+    if [[ ! -t 0 ]]
+    then
+        return 0
+    fi
+    read -r -p "$prompt" || true
+}
+
+function util::prompt_yes_no
+{
+    local prompt="$1"
+    local default="${2:-yes}"
+
+    if [[ ! -t 0 ]]
+    then
+        [[ "$default" == "yes" ]]
+        return $?
+    fi
+
+    local suffix
+    if [[ "$default" == "yes" ]]
+    then
+        suffix="[Y/n]"
+    else
+        suffix="[y/N]"
+    fi
+
+    local answer
+    read -r -p "$prompt $suffix " answer || true
+
+    case "${answer,,}" in
+        y|yes) return 0 ;;
+        n|no) return 1 ;;
+        *) [[ "$default" == "yes" ]] ;;
+    esac
+}

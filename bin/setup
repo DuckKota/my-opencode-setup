@@ -63,16 +63,69 @@ function _ensure_git_project
     log::newline
 }
 
+function _install_tool
+{
+    local name="$1"
+    local install_cmd="$2"
+    local cmd_name="$3"
+    shift 3
+    # The rest of the arguments are optional directories to check for the command if it's not on PATH.
+
+    log::warn "$name is not installed."
+    if ! util::prompt_yes_no "Install $name now?"
+    then
+        log::warn "Skipping $name. Install manually and re-run setup."
+        return 1
+    fi
+
+    if ! eval "$install_cmd"
+    then
+        log::error "Failed to install $name."
+        return 1
+    fi
+
+    if ! util::command_exists "$cmd_name"
+    then
+        local dir
+        for dir in "$@"
+        do
+            if [[ -n "$dir" && -x "$dir/$cmd_name" ]]
+            then
+                export PATH="$dir:$PATH"
+                log::warn "Found $cmd_name in $dir. Added to PATH for this session; add it to your shell config to persist."
+                util::prompt_enter
+                break
+            fi
+        done
+    fi
+
+    if ! util::command_exists "$cmd_name"
+    then
+        log::die "$name installed but not found on PATH. Refresh your shell and re-run setup."
+    fi
+
+    log::success "$name installed!"
+    log::newline
+}
+
 function _ensure_openspec_installed
 {
     log::info "Ensuring OpenSpec is installed..."
     if ! util::command_exists "openspec"
     then
-        log::error "OpenSpec is not installed. Please install OpenSpec and try again."
-        log::error "Install: npm install -g @fission-ai/openspec@latest"
-        exit 1
+        if ! _install_tool "OpenSpec" "npm install -g @fission-ai/openspec@latest" "openspec" \
+            "$(npm prefix -g 2>/dev/null)/bin" "$HOME/.local/bin"
+        then
+            log::error "OpenSpec installation failed."
+            return 0
+        fi
     fi
     log::success "OpenSpec verified!"
+    log::newline
+    if ! _init_openspec
+    then
+        log::error "OpenSpec initialization failed."
+    fi
     log::newline
 }
 
@@ -81,11 +134,20 @@ function _ensure_codebase_memory_mcp_installed
     log::info "Ensuring codebase-memory-mcp is installed..."
     if ! util::command_exists "codebase-memory-mcp"
     then
-        log::error "codebase-memory-mcp is not installed. Please install codebase-memory-mcp and try again."
-        log::error "Install: curl -fsSL https://raw.githubusercontent.com/DeusData/codebase-memory-mcp/main/install.sh | bash -s -- --skip-config"
-        exit 1
+        if ! _install_tool "codebase-memory-mcp" \
+            "curl -fsSL https://raw.githubusercontent.com/DeusData/codebase-memory-mcp/main/install.sh | bash -s -- --skip-config" \
+            "codebase-memory-mcp" "$HOME/.local/bin"
+        then
+            log::error "codebase-memory-mcp installation failed."
+            return 0
+        fi
     fi
     log::success "codebase-memory-mcp verified!"
+    log::newline
+    if ! _init_codebase_memory_mcp
+    then
+        log::error "codebase-memory-mcp initialization failed."
+    fi
     log::newline
 }
 
@@ -94,11 +156,20 @@ function _ensure_rtk_installed
     log::info "Ensuring rtk is installed..."
     if ! util::command_exists "rtk"
     then
-        log::error "rtk is not installed. Please install rtk and try again."
-        log::error "Install: curl -fsSL https://raw.githubusercontent.com/rtk-ai/rtk/refs/heads/master/install.sh | sh"
-        exit 1
+        if ! _install_tool "rtk" \
+            "curl -fsSL https://raw.githubusercontent.com/rtk-ai/rtk/refs/heads/master/install.sh | sh" \
+            "rtk" "$HOME/.local/bin"
+        then
+            log::error "rtk installation failed."
+            return 0
+        fi
     fi
     log::success "rtk verified!"
+    log::newline
+    if ! _init_rtk
+    then
+        log::error "rtk initialization failed."
+    fi
     log::newline
 }
 
@@ -115,7 +186,25 @@ function _update_gitignore
 function _init_openspec
 {
     log::info "Initializing OpenSpec..."
-    openspec init --tools opencode
+
+    local working_dir
+    working_dir=$(pwd -P)
+    if ! util::is_git_project "$working_dir"
+    then
+        log::warn "Not a Git repository: $working_dir"
+        log::warn "Skipping OpenSpec"
+        return 0
+    fi
+    local git_root
+    git_root=$(git -C "$working_dir" rev-parse --show-toplevel 2>/dev/null)
+    git_root=$(cd "$git_root" && pwd -P)
+
+    if ! (cd "$git_root" && openspec init --tools opencode)
+    then
+        log::error "OpenSpec initialization failed."
+        return 1
+    fi
+    
     log::success "OpenSpec initialized!"
     log::newline
 }
@@ -186,7 +275,8 @@ function _init_codebase_memory_mcp
     git_root=$(cd "$git_root" && pwd -P)
 
     # Ensure we found the codebase-memory-mcp executable
-    local codebase_mcp_install_path="$(which codebase-memory-mcp)"
+    local codebase_mcp_install_path
+    codebase_mcp_install_path="$(which codebase-memory-mcp 2>/dev/null || true)"
     if [[ -z "$codebase_mcp_install_path" ]]
     then
         log::error "command not found: codebase-memory-mcp"
@@ -194,14 +284,30 @@ function _init_codebase_memory_mcp
     fi
 
     # Initialize AGENTS.md with codebase-memory-mcp instructions
-    _init_agents_md "prepend" "$ROOT_DIR/src/instructions/codebase-memory-mcp-agents.md" "$git_root/AGENTS.md"
+    if ! _init_agents_md "prepend" "$ROOT_DIR/src/instructions/codebase-memory-mcp-agents.md" "$git_root/AGENTS.md"
+    then
+        log::error "Failed to write codebase-memory-mcp instructions to AGENTS.md."
+        return 1
+    fi
 
     # This is custom plugin that I wrote, so I don't care to check that it already exists.
-    mkdir -p "$git_root/.opencode/plugins"
-    cp "$ROOT_DIR/src/plugins/CodebaseMemoryReminder.ts" "$git_root/.opencode/plugins"
+    if ! mkdir -p "$git_root/.opencode/plugins"
+    then
+        log::error "Failed to create $git_root/.opencode/plugins."
+        return 1
+    fi
+    if ! cp "$ROOT_DIR/src/plugins/CodebaseMemoryReminder.ts" "$git_root/.opencode/plugins"
+    then
+        log::error "Failed to install CodebaseMemoryReminder plugin."
+        return 1
+    fi
 
     # Update the projects MCP server list
-    mkdir -p "$git_root/.opencode"
+    if ! mkdir -p "$git_root/.opencode"
+    then
+        log::error "Failed to create $git_root/.opencode."
+        return 1
+    fi
     local python_exe
     python_exe="$(util::get_python_exe)"
     if [[ -z "$python_exe" ]]
@@ -209,7 +315,7 @@ function _init_codebase_memory_mcp
         log::error "command not found: python3 / python"
         return 1
     fi
-    (cd "$git_root" && "$python_exe" -c "import json, os
+    if ! (cd "$git_root" && "$python_exe" -c "import json, os
 
 file_path = '.opencode/opencode.json'
 
@@ -246,9 +352,21 @@ try:
 except Exception as e:
     print(f'Error updating file: {e}')
 ")
+    then
+        log::error "Failed to update .opencode/opencode.json MCP config."
+        return 1
+    fi
 
-    codebase-memory-mcp config set auto_index true  # auto-index on session start
-    codebase-memory-mcp config set auto_watch true  # register background git watcher
+    if ! codebase-memory-mcp config set auto_index true  # auto-index on session start
+    then
+        log::error "Failed to enable codebase-memory-mcp auto_index."
+        return 1
+    fi
+    if ! codebase-memory-mcp config set auto_watch true  # register background git watcher
+    then
+        log::error "Failed to enable codebase-memory-mcp auto_watch."
+        return 1
+    fi
 
     log::success "codebase-memory-mcp initialized!"
     log::newline
@@ -257,7 +375,11 @@ except Exception as e:
 function _init_rtk
 {
     log::info "Initializing rtk..."
-    echo "n" | rtk init --global --opencode
+    if ! echo "n" | rtk init --global --opencode
+    then
+        log::error "rtk initialization failed."
+        return 1
+    fi
     log::success "rtk initialized!"
     log::newline
 }
@@ -385,6 +507,87 @@ function _write_theme
     log::newline
 }
 
+function _set_default_theme
+{
+    local theme_name="$1"
+
+    local config_dir="$HOME/.config/opencode"
+    local tui_file
+    if [[ -f "$config_dir/tui.json" ]]
+    then
+        tui_file="$config_dir/tui.json"
+    else
+        tui_file="$config_dir/tui.jsonc"
+    fi
+
+    local python_exe
+    python_exe="$(util::get_python_exe)"
+    if [[ -z "$python_exe" ]]
+    then
+        log::error "command not found: python3 / python"
+        return 1
+    fi
+
+    if ! "$python_exe" -c "import json, os, sys
+
+config_dir = os.path.expanduser('$config_dir')
+tui_file = '$tui_file'
+
+if not os.path.exists(config_dir):
+    os.makedirs(config_dir, exist_ok=True)
+
+if not os.path.exists(tui_file):
+    with open(tui_file, 'w') as f:
+        f.write('{}')
+
+try:
+    with open(tui_file, 'r+') as f:
+        try:
+            data = json.load(f)
+        except json.JSONDecodeError:
+            print('Not valid JSON (tui.jsonc may contain comments); skipping theme set', file=sys.stderr)
+            raise SystemExit(0)
+
+        data['theme'] = '$theme_name'
+
+        f.seek(0)
+        json.dump(data, f, indent=2)
+        f.truncate()
+except SystemExit:
+    raise
+except Exception as e:
+    print(f'Error updating file: {e}', file=sys.stderr)
+"
+    then
+        log::error "Failed to set default theme in $tui_file."
+        return 1
+    fi
+
+    log::success "Set $theme_name as default theme in $tui_file"
+}
+
+function _install_oc_setup
+{
+    log::info "Globally installing oc-setup command..."
+
+    local src_file="$ROOT_DIR/bin/oc-setup"
+    local dst_dir="$HOME/.local/bin"
+    local dst_file="$dst_dir/oc-setup"
+
+    if [[ ! -f "$src_file" ]]
+    then
+        log::error "oc-setup source not found: $src_file"
+        exit 1
+    fi
+
+    mkdir -p "$dst_dir"
+    cp "$src_file" "$dst_file"
+    chmod 755 "$dst_file"
+
+    log::success "oc-setup installed to $dst_file"
+    log::newline
+}
+
 function _write_commit_message_command
 {
     log::info "Globally installing commit-message command..."
@@ -429,21 +632,16 @@ function _write_commit_message_command
 
 # ----------------------------------
 
-log::box "System Pre-checks"
+log::box "Installing Tools"
 # _ensure_git_project
-# _ensure_openspec_installed
+_ensure_openspec_installed
 _ensure_codebase_memory_mcp_installed
 _ensure_rtk_installed
-
-log::box "Initializing Tools"
-# _update_gitignore
-# _init_openspec
-_init_codebase_memory_mcp
-_init_rtk
 
 log::box "Installing Commands"
 _write_commit_message_command
 _write_command "grill-me"
+_write_command "debug"
 _write_command "handoff"
 
 log::box "Installing Skills"
@@ -463,7 +661,6 @@ log::info "Globally installing Caveman speak..."
 _init_agents_md "prepend" "$ROOT_DIR/src/instructions/caveman.md" "$HOME/.config/opencode/AGENTS.md"
 log::info "Globally installing batch file write..."
 _init_agents_md "append" "$ROOT_DIR/src/instructions/file-edit-limits.md" "$HOME/.config/opencode/AGENTS.md"
+_install_oc_setup
 
-"$ROOT_DIR/src/utils/_print_duck.sh"
-echo ""
-log::box "  •  OpenCode Setup Complete  •  "
+"$ROOT_DIR/src/utils/_print_complete.sh"
