@@ -2,6 +2,7 @@
 
 # OpenCode Setup Script
 # This script bootstraps OpenCode tool for a git repository.
+# In a non-git directory, it prompts before initializing OpenSpec and codebase-memory-mcp.
 #
 # Requirements:
 #  • Git, curl, and a bash-compatible shell
@@ -61,6 +62,32 @@ function _ensure_git_project
     GIT_DIR=$(cd "$GIT_DIR" && pwd -P)
     log::success "Git repository verified! ($GIT_DIR)"
     log::newline
+}
+
+function _resolve_init_root
+{
+    local tool_name="$1"
+    local working_dir
+    working_dir=$(pwd -P)
+
+    local root
+    if util::is_git_project "$working_dir"
+    then
+        root=$(git -C "$working_dir" rev-parse --show-toplevel 2>/dev/null)
+    else
+        log::warn "Not a Git repository: $working_dir"
+        if util::prompt_yes_no "Initialize $tool_name in the current directory anyway?" "no"
+        then
+            root="$working_dir"
+        else
+            log::warn "Skipping $tool_name"
+            return 1
+        fi
+    fi
+
+    root=$(cd "$root" && pwd -P)
+    echo "$root"
+    return 0
 }
 
 function _install_tool
@@ -187,19 +214,13 @@ function _init_openspec
 {
     log::info "Initializing OpenSpec..."
 
-    local working_dir
-    working_dir=$(pwd -P)
-    if ! util::is_git_project "$working_dir"
+    local init_root
+    if ! init_root=$(_resolve_init_root "OpenSpec")
     then
-        log::warn "Not a Git repository: $working_dir"
-        log::warn "Skipping OpenSpec"
         return 0
     fi
-    local git_root
-    git_root=$(git -C "$working_dir" rev-parse --show-toplevel 2>/dev/null)
-    git_root=$(cd "$git_root" && pwd -P)
 
-    if ! (cd "$git_root" && openspec init --tools opencode)
+    if ! (cd "$init_root" && openspec init --tools opencode)
     then
         log::error "OpenSpec initialization failed."
         return 1
@@ -262,17 +283,11 @@ function _init_codebase_memory_mcp
 {
     log::info "Initializing codebase-memory-mcp..."
 
-    local working_dir
-    working_dir=$(pwd -P)
-    if ! util::is_git_project "$working_dir"
+    local init_root
+    if ! init_root=$(_resolve_init_root "codebase-memory-mcp")
     then
-        log::warn "Not a Git repository: $working_dir"
-        log::warn "Skipping codebase-memory-mcp"
         return 0
     fi
-    local git_root
-    git_root=$(git -C "$working_dir" rev-parse --show-toplevel 2>/dev/null)
-    git_root=$(cd "$git_root" && pwd -P)
 
     # Ensure we found the codebase-memory-mcp executable
     local codebase_mcp_install_path
@@ -284,28 +299,28 @@ function _init_codebase_memory_mcp
     fi
 
     # Initialize AGENTS.md with codebase-memory-mcp instructions
-    if ! _init_agents_md "prepend" "$ROOT_DIR/src/instructions/codebase-memory-mcp-agents.md" "$git_root/AGENTS.md"
+    if ! _init_agents_md "prepend" "$ROOT_DIR/src/instructions/codebase-memory-mcp-agents.md" "$init_root/AGENTS.md"
     then
         log::error "Failed to write codebase-memory-mcp instructions to AGENTS.md."
         return 1
     fi
 
     # This is custom plugin that I wrote, so I don't care to check that it already exists.
-    if ! mkdir -p "$git_root/.opencode/plugins"
+    if ! mkdir -p "$init_root/.opencode/plugins"
     then
-        log::error "Failed to create $git_root/.opencode/plugins."
+        log::error "Failed to create $init_root/.opencode/plugins."
         return 1
     fi
-    if ! cp "$ROOT_DIR/src/plugins/CodebaseMemoryReminder.ts" "$git_root/.opencode/plugins"
+    if ! cp "$ROOT_DIR/src/plugins/CodebaseMemoryReminder.ts" "$init_root/.opencode/plugins"
     then
         log::error "Failed to install CodebaseMemoryReminder plugin."
         return 1
     fi
 
     # Update the projects MCP server list
-    if ! mkdir -p "$git_root/.opencode"
+    if ! mkdir -p "$init_root/.opencode"
     then
-        log::error "Failed to create $git_root/.opencode."
+        log::error "Failed to create $init_root/.opencode."
         return 1
     fi
     local python_exe
@@ -315,7 +330,7 @@ function _init_codebase_memory_mcp
         log::error "command not found: python3 / python"
         return 1
     fi
-    if ! (cd "$git_root" && "$python_exe" -c "import json, os
+    if ! (cd "$init_root" && "$python_exe" -c "import json, os
 
 file_path = '.opencode/opencode.json'
 
