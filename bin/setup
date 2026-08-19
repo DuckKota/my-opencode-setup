@@ -655,6 +655,7 @@ _write_skill "verification-before-completion"
 
 log::box "Installing Themes"
 _write_theme "github-dark-default"
+_set_default_theme "github-dark-default"
 
 log::box "Installing Miscellaneous"
 log::info "Globally installing Caveman speak..."
