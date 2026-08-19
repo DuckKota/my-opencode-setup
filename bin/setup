@@ -151,27 +151,27 @@ function _ensure_codebase_memory_mcp_installed
     log::newline
 }
 
-function _ensure_rtk_installed
-{
-    log::info "Ensuring rtk is installed..."
-    if ! util::command_exists "rtk"
-    then
-        if ! _install_tool "rtk" \
-            "curl -fsSL https://raw.githubusercontent.com/rtk-ai/rtk/refs/heads/master/install.sh | sh" \
-            "rtk" "$HOME/.local/bin"
-        then
-            log::error "rtk installation failed."
-            return 0
-        fi
-    fi
-    log::success "rtk verified!"
-    log::newline
-    if ! _init_rtk
-    then
-        log::error "rtk initialization failed."
-    fi
-    log::newline
-}
+# function _ensure_rtk_installed
+# {
+#     log::info "Ensuring rtk is installed..."
+#     if ! util::command_exists "rtk"
+#     then
+#         if ! _install_tool "rtk" \
+#             "curl -fsSL https://raw.githubusercontent.com/rtk-ai/rtk/refs/heads/master/install.sh | sh" \
+#             "rtk" "$HOME/.local/bin"
+#         then
+#             log::error "rtk installation failed."
+#             return 0
+#         fi
+#     fi
+#     log::success "rtk verified!"
+#     log::newline
+#     if ! _init_rtk
+#     then
+#         log::error "rtk initialization failed."
+#     fi
+#     log::newline
+# }
 
 function _update_gitignore
 {
@@ -636,7 +636,7 @@ log::box "Installing Tools"
 # _ensure_git_project
 _ensure_openspec_installed
 _ensure_codebase_memory_mcp_installed
-_ensure_rtk_installed
+# _ensure_rtk_installed
 
 log::box "Installing Commands"
 _write_commit_message_command

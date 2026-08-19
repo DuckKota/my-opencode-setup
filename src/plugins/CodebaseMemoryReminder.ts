@@ -2,9 +2,12 @@ import { readFileSync } from "fs"
 import { join } from "path"
 import type { Plugin } from "@opencode-ai/plugin"
 
-const OVERRIDE_FLAG = "--skip-graph"
 const GRAPH_MARKER = "<!-- codebase-memory-mcp:start -->"
 const AGENTS_FILENAME = "AGENTS.md"
+
+const REMINDER = `[codebase-memory] Graph is active — search_graph()/trace_path() may be faster here. Continuing with raw search.
+
+`
 
 // Content-searching binaries on a shell line. Leading-token only.
 const SEARCH_BINARIES = new Set([
@@ -24,24 +27,14 @@ const PRESET_WORDS = new Set(["command", "builtin", "exec", "time", "env", "sudo
 // Shell control chars and escapes that can precede the first command word.
 const LEADING_SEPARATOR_RE = /^[;&|()\s!\\]+/
 
-const GATE_MESSAGE = `Search rejected: a codebase knowledge graph is active for this project.
-
-Use the graph tools for code discovery first:
-- search_graph() — find functions/classes/routes/variables
-- trace_path(...)   — who calls something / what it calls
-- get_code_snippet() — read a specific symbol's source
-- get_architecture() — project structure overview
-
-If you genuinely need a raw string/error/config literal or must search
-non-code files, re-run the search as a bash command and append the override,
-e.g.:
-    rg --skip-graph "foo"
-
-For native grep/glob there is no override; switch to a bash command above.
-`
+// Emit the reminder on the first 2 detected searches, then every 10th
+// (2, 12, 22, ...) per session.
+function shouldNudge(count: number): boolean {
+  return count <= 2 || count % 10 === 2
+}
 
 export const CodebaseMemoryReminderPlugin: Plugin = async ({ directory, $ }) => {
-  // Only arm the gate when the knowledge graph is actually configured.
+  // Only arm the reminder when the knowledge graph is actually configured.
   // Binary present...
   try {
     await $`which codebase-memory-mcp`.quiet()
@@ -65,33 +58,33 @@ export const CodebaseMemoryReminderPlugin: Plugin = async ({ directory, $ }) => 
     return {}
   }
 
-  const deny = () => {
-    throw new Error(GATE_MESSAGE)
+  // Per-session count of detected searches.
+  const searchCounts = new Map<string, number>()
+
+  const maybeNudge = (sessionID: string, output: { output: string }) => {
+    const count = (searchCounts.get(sessionID) ?? 0) + 1
+    searchCounts.set(sessionID, count)
+    if (shouldNudge(count)) {
+      output.output = REMINDER + output.output
+    }
   }
 
   return {
-    "tool.execute.before": async (input, output) => {
+    "tool.execute.after": async (input, output) => {
       const tool = String(input?.tool ?? "").toLowerCase()
 
-      // Native search tools: no flag override exists; always direct to bash.
       if (tool === "grep" || tool === "glob") {
-        deny()
+        maybeNudge(input.sessionID, output)
+        return
       }
 
       if (tool !== "bash" && tool !== "shell") return
 
-      const command = (output?.args as Record<string, unknown>)?.command
+      const command = (input?.args as Record<string, unknown>)?.command
       if (typeof command !== "string" || command.length === 0) return
-
       if (!isShellSearchCommand(command)) return
 
-      // The user/model explicitly bypassed the graph.
-      if (hasOverride(command)) {
-        output.args.command = stripOverride(command)
-        return
-      }
-
-      deny()
+      maybeNudge(input.sessionID, output)
     },
   }
 }
@@ -154,12 +147,4 @@ function firstToken(s: string): { first: string; second: string } {
   }
 
   return { first: toks[i]?.toLowerCase() ?? "", second: toks[i + 1]?.toLowerCase() ?? "" }
-}
-
-function hasOverride(command: string): boolean {
-  return new RegExp(`(?<!\\S)${OVERRIDE_FLAG}(?=\\s|$)`, "g").test(command)
-}
-
-function stripOverride(command: string): string {
-  return command.replace(/\s*--skip-graph\b/g, "").trim()
 }

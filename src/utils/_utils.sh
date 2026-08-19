@@ -29,26 +29,41 @@ function util::get_python_exe
     fi
 }
 
+function util::_read_from_tty
+{
+    local prompt="$1"
+    local var="$2"
+
+    # stdin is a terminal: prompt normally.
+    if [[ -t 0 ]]
+    then
+        read -r -p "$prompt" "$var" || true
+        return 0
+    fi
+
+    # stdin is piped (e.g. curl | bash) but a controlling terminal exists:
+    # reopen /dev/tty so the user still gets prompted.
+    if (exec 0< /dev/tty) 2>/dev/null
+    then
+        read -r -p "$prompt" "$var" < /dev/tty || true
+        return 0
+    fi
+
+    # Truly headless (no TTY at all): nothing to prompt against.
+    return 1
+}
+
 function util::prompt_enter
 {
     local prompt="${1:-Press Enter to continue...}"
-    if [[ ! -t 0 ]]
-    then
-        return 0
-    fi
-    read -r -p "$prompt" || true
+    local _unused
+    util::_read_from_tty "$prompt" _unused || true
 }
 
 function util::prompt_yes_no
 {
     local prompt="$1"
     local default="${2:-yes}"
-
-    if [[ ! -t 0 ]]
-    then
-        [[ "$default" == "yes" ]]
-        return $?
-    fi
 
     local suffix
     if [[ "$default" == "yes" ]]
@@ -59,7 +74,12 @@ function util::prompt_yes_no
     fi
 
     local answer
-    read -r -p "$prompt $suffix " answer || true
+    if ! util::_read_from_tty "$prompt $suffix " answer
+    then
+        # No TTY available; fall back to the default answer.
+        [[ "$default" == "yes" ]]
+        return $?
+    fi
 
     case "${answer,,}" in
         y|yes) return 0 ;;
