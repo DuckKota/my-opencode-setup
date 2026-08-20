@@ -424,8 +424,17 @@ function _write_command
             log::success "/$command_name command already set up in $dst_command"
             log::newline
         else
-            log::warn "Skipping /$command_name command. Different command by the same name already exists: $dst_command"
-            log::newline
+            log::warn "/$command_name command already exists with different content: $dst_command"
+            if util::prompt_yes_no "Overwrite with new version" "no"
+            then
+                mkdir -p "$(dirname "$dst_command")"
+                cp "$src_command" "$dst_command"
+                log::success "/$command_name command updated in $dst_command"
+                log::newline
+            else
+                log::warn "Skipping /$command_name command"
+                log::newline
+            fi
         fi
     else
         mkdir -p "$(dirname "$dst_command")"
@@ -476,8 +485,23 @@ function _write_skill
             log::success "$skill_name skill already set up in $dst_dir"
             log::newline
         else
-            log::warn "Skipping $skill_name skill. Different version already exists: $dst_dir"
-            log::newline
+            log::warn "$skill_name skill already exists with different content: $dst_dir"
+            if util::prompt_yes_no "Overwrite with new version" "no"
+            then
+                local file rel_path target_file
+                while IFS= read -r -d '' file
+                do
+                    rel_path="${file#$src_dir/}"
+                    target_file="$dst_dir/$rel_path"
+                    mkdir -p "$(dirname "$target_file")"
+                    cp "$ROOT_DIR/src/skills/$skill_name/$rel_path" "$target_file"
+                done < <(find "$src_dir" -type f -print0)
+                log::success "$skill_name skill updated in $dst_dir"
+                log::newline
+            else
+                log::warn "Skipping $skill_name skill"
+                log::newline
+            fi
         fi
         return 0
     fi
@@ -631,8 +655,20 @@ function _write_commit_message_command
             fi
         fi
 
-        log::warn "Skipping /commit-message command. Different version already exists in $dst_command_path"
-        log::newline
+        log::warn "/commit-message command already exists with different content in $dst_command_path"
+        if util::prompt_yes_no "Overwrite with new version" "no"
+        then
+            mkdir -p "$(dirname "$dst_command_path")" "$(dirname "$dst_script_path")"
+            cp "$src_command_path" "$dst_command_path"
+            cp "$src_script_path" "$dst_script_path"
+            chmod 755 "$dst_script_path"
+            sed "s|<VALIDATE_COMMIT_SCRIPT>|$dst_script_path|g" "$dst_command_path" > "$dst_command_path.tmp" && mv "$dst_command_path.tmp" "$dst_command_path"
+            log::success "/commit-message command updated in $dst_command_path"
+            log::newline
+        else
+            log::warn "Skipping /commit-message command"
+            log::newline
+        fi
     else
         mkdir -p "$(dirname "$dst_command_path")" "$(dirname "$dst_script_path")"
         cp "$src_command_path" "$dst_command_path"
