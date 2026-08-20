@@ -38,7 +38,7 @@ then
 else
     ROOT_DIR=$(mktemp -d)
     git clone --depth 1 \
-        https://github.com/DuckKota/OpenCode-Bootstrapper.git \
+        https://github.com/DuckKota/my-opencode-setup.git \
         "$ROOT_DIR"
     CLEANUP_TMP=true
     trap '[[ "$CLEANUP_TMP" == "true" ]] && rm -rf "$ROOT_DIR"' EXIT INT TERM

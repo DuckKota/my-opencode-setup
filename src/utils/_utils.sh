@@ -37,15 +37,19 @@ function util::_read_from_tty
     # stdin is a terminal: prompt normally.
     if [[ -t 0 ]]
     then
-        read -r -p "$prompt" "$var" || true
+        printf "%s" "$prompt" >&2
+        read -r "$var" || true
         return 0
     fi
 
     # stdin is piped (e.g. curl | bash) but a controlling terminal exists:
     # reopen /dev/tty so the user still gets prompted.
+    # Use explicit printf for prompt — read -p is suppressed when shell's
+    # own fd 0 is a pipe, even with < /dev/tty redirect.
     if (exec 0< /dev/tty) 2>/dev/null
     then
-        read -r -p "$prompt" "$var" < /dev/tty || true
+        printf "%s" "$prompt" >&2
+        read -r "$var" < /dev/tty || true
         return 0
     fi
 
