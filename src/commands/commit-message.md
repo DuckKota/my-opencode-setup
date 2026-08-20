@@ -15,9 +15,6 @@ You must:
 
 You must never:
 
-- execute `git commit`
-- execute `git push`
-- modify repository files
 - inspect unstaged changes as a substitute for staged changes
 
 ---
@@ -114,15 +111,6 @@ When multiple types appear applicable, choose the type representing the
 primary externally observable outcome rather than the implementation
 mechanics.
 
-Examples:
-
-- New feature + tests → feat
-- Bug fix + docs → fix
-- Refactor + tests → refactor
-- Documentation only → docs
-- Formatting only → style
-- Dependency updates only → dep
-
 ---
 
 ### Scope
@@ -136,14 +124,6 @@ Rules:
 - kebab-case
 - omit for global or cross-cutting changes
 - never invent a scope merely because a directory exists
-
-Examples:
-
-- parser
-- installer
-- pipeline
-- docs
-- api-client
 
 ---
 
@@ -237,24 +217,20 @@ If validation fails:
 
 Repeat until validation succeeds.
 
-Never ignore validator errors.
-
 Do not return an invalid commit message.
 
 ---
 
 ## Step 5: Quality Gate
 
-Before responding, ask:
+Before responding, validate each component against the rules above:
 
-> Would this commit make sense six months from now when viewed in
-> `git log` without any additional context?
+- Subject ≤ 72 chars, imperative, lowercase start, no period?
+- Body explains *why* not *what* (diff already shows what)?
+- Footer keyword matches type (Fixes/Implements/Closes)?
+- Issue number present and real?
 
-If not:
-
-Improve the summary and body.
-
-Then run the validation script again before continuing.
+If any rule is violated: fix it, then re-run validation before continuing.
 
 ---
 
