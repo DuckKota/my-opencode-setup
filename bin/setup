@@ -656,7 +656,7 @@ _ensure_codebase_memory_mcp_installed
 log::box "Installing Commands"
 _write_commit_message_command
 _write_command "grill-me"
-_write_command "debug"
+_write_command "fix"
 _write_command "handoff"
 
 log::box "Installing Skills"

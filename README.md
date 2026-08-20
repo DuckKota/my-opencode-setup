@@ -5,7 +5,7 @@ curl -fsSL https://raw.githubusercontent.com/DuckKota/my-opencode-setup/refs/hea
     | bash
 ```
 
-* **Commands:** [/commit-message](./src/commands/commit-message.md) • [/grill-me](./src/commands/grill-me.md) • [/debug](./src/commands/debug.md) • [/handoff](./src/commands/handoff.md)
+* **Commands:** [/commit-message](./src/commands/commit-message.md) • [/grill-me](./src/commands/grill-me.md) • [/fix](./src/commands/fix.md) • [/handoff](./src/commands/handoff.md)
 * **Tools:** [codebase-memory-mcp](https://deusdata.github.io/codebase-memory-mcp/) • [OpenSpec](https://openspec.dev/)
 * **Other:** [caveman](./src/instructions/caveman.md) • [batch-file-writes](./src/instructions/file-edit-limits.md) • [github-dark-default](./src/themes/github-dark-default.json) theme
 

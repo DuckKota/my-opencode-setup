@@ -1,5 +1,5 @@
 ---
-name: debug
+name: fix
 description: Fix a bug or performance regression
 ---
 
