@@ -131,6 +131,15 @@ function _update_verification_before_completion_skill
     log::newline
 }
 
+function _update_writing_for_agents_skill
+{
+    log::info "Updating writing-for-agents skill"
+    mkdir -p "$ROOT_DIR/src/skills/writing-for-agents"
+    curl -fsSL -# "https://raw.githubusercontent.com/mattpocock/skills/refs/heads/main/skills/productivity/writing-for-agents/SKILL.md" > "$ROOT_DIR/src/skills/writing-for-agents/SKILL.md"
+    curl -fsSL -# "https://raw.githubusercontent.com/mattpocock/skills/refs/heads/main/skills/productivity/writing-for-agents/SKILL-MECHANICS.md" > "$ROOT_DIR/src/skills/writing-for-agents/SKILL-MECHANICS.md"
+    log::success "writing-for-agents updated"
+    log::newline
+}
 
 
 # ----------------------------------
@@ -146,3 +155,4 @@ _update_improve_codebase_architecture_skill
 _update_grilling_skill
 _update_using_git_worktrees_skill
 _update_verification_before_completion_skill
+_update_writing_for_agents_skill
